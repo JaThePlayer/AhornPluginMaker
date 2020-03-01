@@ -17,7 +17,7 @@ namespace AhornPluginMaker
         string getParamsString()
         {
             string str = "";
-            if (Type == PlacementTypes.Trigger)
+            if (Type == PlacementTypes.Trigger || Type == PlacementTypes.Solid)
             {
                 str += ", width::Integer=16, height::Integer=16";
             }
@@ -84,6 +84,10 @@ namespace AhornPluginMaker
             {
                 Type = PlacementTypes.Trigger;
             }
+            else if (inheritedType == "Solid")
+            {
+                Type = PlacementTypes.Solid;
+            }
             else
             {
                 Type = PlacementTypes.Entity;
@@ -105,11 +109,20 @@ namespace AhornPluginMaker
             while (ctor.Contains(dataCall))
             {
                 ctor = ctor.Remove(0, ctor.IndexOf(dataCall) + dataCall.Length);
+                if (ctor.Remove(5).Trim() == "Width")
+                {
+                    if (!Params.ContainsKey("Width"))
+                    Params.Add("Width", new string[] { entityDataFuncs["Width"], "16" });
+                }
+                if (ctor.Remove(6).Trim() == "Height")
+                {
+                    if (!Params.ContainsKey("Height"))
+                        Params.Add("Height", new string[] { entityDataFuncs["Height"], "16" });
+                }
                 string funcName = ctor.Remove(ctor.IndexOf('(')).Trim();
                 if (entityDataFuncs.ContainsKey(funcName))
                 {
                     string func = getFunc();
-
                     string[] vals = func.Split(',');
                     string type = entityDataFuncs[funcName];
                     string defaultVal = vals.Length > 1 ? vals[1] : defaultVals[funcName];
@@ -120,8 +133,13 @@ namespace AhornPluginMaker
                     }
                     Params.Add(vals[0].Trim('"'), new string[] { type, defaultVal.Trim() });
                 }
-
-
+                if (Type == PlacementTypes.Entity && Params.ContainsKey("Width") && Params.ContainsKey("Height"))
+                {
+                    // we'll just treat it as a Solid
+                    Type = PlacementTypes.Solid;
+                    Params.Remove("Width");
+                    Params.Remove("Height");
+                }
                 string getFunc()
                 {
                     string f = ctor.Remove(ctor.IndexOf(';')).Trim();
@@ -159,7 +177,9 @@ namespace AhornPluginMaker
             { "Char", "Char"},
             { "Float", "Number"},
             { "HexColor", "String" },
-            { "Int", "Integer" }
+            { "Int", "Integer" },
+            { "Width", "Integer"},
+            { "Height", "Integer"}
         };
 
         static Dictionary<string, string> defaultVals = new Dictionary<string, string>()
@@ -169,7 +189,9 @@ namespace AhornPluginMaker
             { "Char", "\'\'"},
             { "Float", "1.0"},
             { "HexColor", "\"ffffff\"" },
-            { "Int", "1" }
+            { "Int", "1" },
+            { "Width", "16"},
+            { "Height", "16"}
         };
 
         static List<string> customEntityDefs = new List<string>()
@@ -178,26 +200,22 @@ namespace AhornPluginMaker
             "[CustomEntity("
         };
 
-        //static List<string> entityTypes = new List<string>()
-        //{
-        //    "Entity", "Solid", "Platform"
-        //};
-
         public enum PlacementTypes
         {
             Entity,
-            Trigger
+            Trigger,
+            Solid
         }
 
         void getPlugin()
         {
             string placementName = FullName.Replace("/", "") + "Placement";
             string plugin = $"module {FullName.Replace("/", "")}Module\n\nusing ..Ahorn, Maple\n\n"
-            + $"@mapdef {Type.ToString()} \"{FullName}\" {placementName}(x::Integer, y::Integer{getParamsString()})\n\n"
+            + $"@mapdef {(Type == PlacementTypes.Trigger ? "Trigger" : "Entity")} \"{FullName}\" {placementName}(x::Integer, y::Integer{getParamsString()})\n\n"
             + "const placements = Ahorn.PlacementDict(\n	"
             + $"{$"\"{humanize(Name)} ({humanize(ModName)})\" => Ahorn.EntityPlacement(\n"}"
             + $"		{placementName}";
-            if (Type == PlacementTypes.Trigger)
+            if (Type == PlacementTypes.Trigger || Type == PlacementTypes.Solid)
             {
                 plugin += ",\n		\"rectangle\"\n";
             }
@@ -208,7 +226,7 @@ namespace AhornPluginMaker
 
             plugin += $"	)\n)\n\n";
             // placement done
-            // Drawing code, only for Entities
+            // Drawing code for Entities
             if (Type == PlacementTypes.Entity)
             {
                 plugin += "sprite = \"path/to/sprite00.png\"\n\n"
@@ -217,7 +235,21 @@ namespace AhornPluginMaker
                        + $"    return Ahorn.getSpriteRectangle(sprite, x, y)\n"
                        + "end\n\n"
                        + $"Ahorn.render(ctx::Ahorn.Cairo.CairoContext, entity::{placementName}, room::Maple.Room) = Ahorn.drawSprite(ctx, sprite, 0, 0)\n\n";
-
+            }
+            else if (Type == PlacementTypes.Solid)
+            {
+                plugin += $"Ahorn.minimumSize(entity::{placementName}) = 8, 8\n" +
+                          $"Ahorn.resizable(entity::{placementName}) = true, true\n\n" +
+                          $"Ahorn.selection(entity::{placementName}) = Ahorn.getEntityRectangle(entity)\n\n" +
+                          $"edgeColor = (30, 30, 30, 255) ./ 255\n" +
+                          $"centerColor = (60, 60, 60, 102) ./ 255\n\n" +
+                          $"function Ahorn.render(ctx::Ahorn.Cairo.CairoContext, entity::{placementName}, room::Maple.Room)\n" +
+                          $"    x = Int(get(entity.data, \"x\", 0))\n" +
+                          $"    y = Int(get(entity.data, \"y\", 0))\n" +
+                          $"    width = Int(get(entity.data, \"width\", 32))\n" +
+                          $"    height = Int(get(entity.data, \"height\", 32))\n\n" +
+                          $"    Ahorn.drawRectangle(ctx, 0, 0, width, height, centerColor, edgeColor)\n" +
+                          $"end\n\n";
             }
 
             plugin += "end";

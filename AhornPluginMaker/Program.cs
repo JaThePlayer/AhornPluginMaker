@@ -10,9 +10,10 @@ namespace AhornPluginMaker
             Console.WriteLine("Give the path to a .cs file to turn it into an Ahorn Plugin");
             string path = Console.ReadLine().Trim('"');
             Console.WriteLine();
+            AhornPlugin plugin;
             try
             {
-                AhornPlugin plugin = new AhornPlugin(path);
+                plugin = new AhornPlugin(path);
             } catch (Exception e)
             {
                 Console.WriteLine($"Ahorn Plugin Maker encountered an error!\n {e.Message}\n {e.StackTrace}\n");
@@ -21,20 +22,24 @@ namespace AhornPluginMaker
                 Console.ReadLine();
                 return;
             }
-            
-            Console.WriteLine("\n\nRemember to change the \"sprite\" variable to point to your entity's sprite");
+            if (plugin.Type == AhornPlugin.PlacementTypes.Entity)
+                Console.WriteLine("\n\nRemember to change the \"sprite\" variable to point to your entity's sprite");
             Console.Write("The plugin isn't working? ");
-            PrintPossibleErrors(false);
+            PrintPossibleErrors(false, plugin);
             Console.ReadLine();
         }
 
-        static void PrintPossibleErrors(bool crashed)
+        static void PrintPossibleErrors(bool crashed, AhornPlugin plugin = null)
         {
             Console.WriteLine("Here's some things that might've gone wrong:");
             Console.WriteLine("- Your entity had more than 1 constructor");
             Console.WriteLine("- Your entity didn't have a CustomEntity attribute");
             if (!crashed)
+            {
+                if (plugin != null && plugin.Type == AhornPlugin.PlacementTypes.Entity)
                 Console.WriteLine("- You didn't change the \"sprite\" variable in the ahorn plugin or the path is incorrect");
+            }
+                
         }
     }
 }
