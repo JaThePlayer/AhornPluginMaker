@@ -6,7 +6,7 @@ namespace AhornPluginMaker
     {
         static void Main(string[] args)
         {
-            Console.WriteLine("Ahorn Plugin Maker v1.0");
+            Console.WriteLine("Ahorn Plugin Maker v1.2");
             Console.WriteLine("Give the path to a .cs file to turn it into an Ahorn Plugin");
             string path = Console.ReadLine().Trim('"');
             Console.WriteLine();

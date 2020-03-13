@@ -126,6 +126,14 @@ namespace AhornPluginMaker
                     string[] vals = func.Split(',');
                     string type = entityDataFuncs[funcName];
                     string defaultVal = vals.Length > 1 ? vals[1] : defaultVals[funcName];
+                    if (funcName == "Float")
+                    {
+                        defaultVal = defaultVal.Replace("f", "");
+                        if (!defaultVal.Contains("."))
+                        {
+                            defaultVal += ".0";
+                        }
+                    }
                     if (funcName == "HexColor")
                     {
                         if (defaultVal.Contains("Calc.HexToColor"))
